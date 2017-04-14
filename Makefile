@@ -1,5 +1,5 @@
 
-all:
+all: *.hs
 	ghc -lpthread Chat.hs
 
 clean:
