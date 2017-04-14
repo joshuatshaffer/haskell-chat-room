@@ -9,17 +9,27 @@ import Control.Monad
 import Network
 import Data.List (delete)
 
+newConnection :: Handle -> MVar [Handle] -> IO ()
+newConnection h clients = do
+  putStrLn $ show h ++ " joined the room."
+  modifyMVar_ clients (\xs -> return (h:xs))
+
+endConnection :: Handle -> MVar [Handle] -> IO ()
+endConnection h clients = do
+  putStrLn $ show h ++ " left the room."
+  modifyMVar_ clients (return . delete h)
+
 serviceClient :: Handle -> MVar (Handle, String) -> MVar [Handle] -> IO ()
 serviceClient h messageBuf clients = do
-  modifyMVar_ clients (\xs -> return (h:xs))
+  newConnection h clients
   _ <- forkFinally (receiveMessages h messageBuf)
-                   (\_ -> modifyMVar_ clients (return . delete h))
+                   (\_ -> endConnection h clients)
   return ()
 
 relayMessages :: MVar (Handle, String) -> MVar [Handle] -> IO ()
 relayMessages messageBuf clients = forever $ do
   (sender,message) <- takeMVar messageBuf
-  putStrLn $ "relaying " ++ show (sender,message)
+  putStrLn $ show sender ++ " said " ++ show message
   withMVar clients $ mapM_ (\h -> when (h /= sender) $ hPutStrLn h message)
 
 chatAsServer :: PortID -> IO ()
@@ -29,7 +39,6 @@ chatAsServer port = do
   _ <- forkIO (relayMessages messageBuf clients)
   s <- listenOn port
   _ <- forever $ do
-    (h,hn,p) <- accept s
-    print (hn,p)
+    (h,_,_) <- accept s
     serviceClient h messageBuf clients
   sClose s
