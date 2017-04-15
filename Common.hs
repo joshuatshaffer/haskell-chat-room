@@ -1,14 +1,19 @@
 
 module Common where
 
-import System.IO
 import Control.Concurrent
-import Control.Monad
 
-receiveMessages :: Handle -> MVar (Handle, String) -> IO ()
-receiveMessages h messageBuf = forever $ do
-  m <- hGetLine h
-  putMVar messageBuf (h,m)
+data Client2ServerMessage = C2S_BC String
+                          | C2S_CN String
+                          | C2S_DM String String
+                          deriving (Show,Read)
+
+data Server2ClientMessage = S2C_J  String
+                          | S2C_L  String
+                          | S2C_BC String String
+                          | S2C_CN String String
+                          | S2C_DM String String
+                          deriving (Show,Read)
 
 together :: [IO ()] -> IO ()
 together ios = do
@@ -16,3 +21,6 @@ together ios = do
   ids <- mapM (\x -> forkFinally x (\_ -> putMVar onDone ())) ios
   takeMVar onDone
   mapM_ killThread ids
+
+unlookup :: Eq b => b -> [(a,b)] -> Maybe a
+unlookup k xs = lookup k $ map (\(a,b)->(b,a)) xs
