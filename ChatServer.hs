@@ -9,11 +9,13 @@ import           Data.Maybe         (fromJust)
 import           Network
 import           System.IO
 
+
 data ServerEvent = Join Handle String
                  | Leave Handle
                  | Broadcast Handle String
                  | ChangeName Handle String
                  | DirectMessage Handle String String
+                 deriving (Show)
 
 messageToEvent :: Client2ServerMessage -> Handle -> ServerEvent
 messageToEvent (C2S_BC message) h        = Broadcast h message
@@ -21,7 +23,7 @@ messageToEvent (C2S_CN newName) h        = ChangeName h newName
 messageToEvent (C2S_DM toWhom message) h = DirectMessage h toWhom message
 
 messageToEvent' :: Client2ServerMessage -> Handle -> MVar ServerEvent -> IO ()
-messageToEvent' m h nextEvent = putMVar nextEvent $ messageToEvent m h
+messageToEvent' m h nextEvent = putMVar nextEvent $! messageToEvent m h
 
 serviceClient :: Handle -> MVar ServerEvent -> IO ()
 serviceClient h nextEvent =
@@ -30,7 +32,7 @@ serviceClient h nextEvent =
     onFirstMessage = do m <- fmap read (hGetLine h)
                         case m of
                           C2S_CN newName -> putMVar nextEvent $ Join h newName
-                          _ -> do putMVar nextEvent $ Join h ""
+                          _ -> do putMVar nextEvent $! Join h ""
                                   messageToEvent' m h nextEvent
 
     onRestMessages = do m <- fmap read (hGetLine h)
