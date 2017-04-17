@@ -53,7 +53,12 @@ weDirectMessageEvent :: String -> String -> ClientEvent
 weDirectMessageEvent toWhom message h = hPrint h $ C2S_DM toWhom message
 
 handleUserInput :: MVar ClientEvent -> IO ()
-handleUserInput nextEvent = forever $ getLine >>= (putMVar nextEvent . weBroadcastEvent)
+handleUserInput nextEvent = forever $ do s <- getLine
+                                         case head s of
+                                           ':' -> putMVar nextEvent $ weChangeNameEvent $ tail s
+                                           ';' -> do s1 <- getLine
+                                                     putMVar nextEvent $ weDirectMessageEvent (tail s) s1
+                                           _ -> putMVar nextEvent $ weBroadcastEvent s
 
 chatAsClient :: HostName -> PortID -> IO ()
 chatAsClient name port = do
